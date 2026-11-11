@@ -305,7 +305,8 @@ main() {
         echo '{}' > "$SEED/settings.json"
         echo '{}' > "$ROOT/state/routing_policies.json"
         cp "$ROOT/state/routing_policies.json" "$SEED/routing_policies.json"
-        echo '{"provider_dns_servers": ["77.88.8.8", "9.9.9.9"], "tunnel_dns_servers": ["9.9.9.9", "8.8.8.8"]}' > "$ROOT/state/dns/config.json"
+        # Список рекламы указан, но выключен: включается вручную во вкладке «Реклама».
+        echo '{"provider_dns_servers": ["77.88.8.8", "9.9.9.9"], "tunnel_dns_servers": ["9.9.9.9", "8.8.8.8"], "subscriptions": [{"url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt", "kind": "blocklist", "enabled": false}]}' > "$ROOT/state/dns/config.json"
 
         if [ -x "$ROOT/bin/import-config" ]; then
             env -u LD_LIBRARY_PATH -u LD_PRELOAD "$ROOT/bin/import-config" -legacy-dir "$SEED" -source-dir "$ROOT" -root "$ROOT" \
