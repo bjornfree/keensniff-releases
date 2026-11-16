@@ -1,13 +1,11 @@
 # KeenSniff Releases
 
-Публичные сборки KeenSniff для роутеров Keenetic с Entware.
+Публичный репозиторий скомпилированных пакетов и установщика для роутеров Keenetic.
 
-## Установка одной командой
+## Быстрая установка на роутер в одну команду:
 
 ```sh
 (command -v curl >/dev/null 2>&1 || { opkg update && opkg install curl; }) && curl -fsSL https://raw.githubusercontent.com/bjornfree/keensniff-releases/main/install.sh | sh
 ```
 
-Поддерживаются arm64, mipsle, mips и arm.
-
-[Описание изменений](CHANGELOG.md) · [Исходный код](https://gitverse.ru/bjornfree/KeenSniff)
+Исходный код проекта: [GitVerse](https://gitverse.ru/bjornfree/KeenSniff)
