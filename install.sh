@@ -3,9 +3,9 @@
 # KeenSniff (Go) — автономный установщик для роутеров Keenetic
 #
 # Установка / обновление в одну команду:
-#   curl -sSL https://raw.githubusercontent.com/bjornfree/KeenSniff/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/bjornfree/keensniff-releases/main/install.sh | sh
 # или через wget:
-#   wget -qO- https://raw.githubusercontent.com/bjornfree/KeenSniff/main/install.sh | sh
+#   wget -qO- https://raw.githubusercontent.com/bjornfree/keensniff-releases/main/install.sh | sh
 #
 # Удаление:
 #   sh /opt/keensniff-go/uninstall.sh
@@ -16,15 +16,15 @@ umask 022
 
 ROOT="/opt/keensniff-go"
 INIT="/opt/etc/init.d/S99sniffer-go"
-DEFAULT_REPO="bjornfree/KeenSniff"
+DEFAULT_REPO="bjornfree/keensniff-releases"
 REPO="${REPO:-$DEFAULT_REPO}"
 GITHUB_RELEASES_URL="https://github.com/${REPO}/releases/latest/download"
-GITHUB_PAGES_URL="https://bjornfree.github.io/KeenSniff/downloads"
+GITHUB_PAGES_URL="https://bjornfree.github.io/${REPO#*/}/downloads"
 TMP_STAGE="/tmp/keensniff-install-$$"
 
-info()  { printf "\033[1;32m[+]\033[0m %s\n" "$1"; }
-warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$1"; }
-error() { printf "\033[1;31m[-]\033[0m %s\n" "$1"; }
+info()  { printf "\033[1;32m[+]\033[0m %s\n" "$1" >&2; }
+warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$1" >&2; }
+error() { printf "\033[1;31m[-]\033[0m %s\n" "$1" >&2; }
 die()   { error "$1"; exit 1; }
 
 # --- Определение архитектуры роутера ---
