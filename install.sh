@@ -28,6 +28,17 @@ warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$1" >&2; }
 error() { printf "\033[1;31m[-]\033[0m %s\n" "$1" >&2; }
 die()   { error "$1"; exit 1; }
 
+# Keep helper scratch files on the drive and remove staging on every shell exit.
+prepare_staging() {
+    mkdir -p "$TMP_STAGE"
+    chmod 700 "$TMP_STAGE"
+    TMPDIR="$TMP_STAGE"
+    export TMPDIR
+    trap 'rm -rf "$TMP_STAGE"' 0
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+}
+
 # --- Определение архитектуры роутера ---
 detect_arch() {
     if command -v opkg >/dev/null 2>&1; then
@@ -259,6 +270,7 @@ main() {
     info "Архитектура процессора: $ARCH"
 
     check_resources_pre
+    prepare_staging
 
     LAN_IP=$(ip -4 addr show br0 2>/dev/null | awk '/inet /{split($2, a, "/"); print a[1]; exit}')
     [ -n "$LAN_IP" ] || LAN_IP="192.168.1.1"
@@ -278,6 +290,7 @@ main() {
     EXTRACT_DIR="$TMP_STAGE/extract"
     mkdir -p "$EXTRACT_DIR"
     tar -xzf "$TARBALL" -C "$EXTRACT_DIR"
+    rm -f "$TARBALL"
     
     PKG_SRC=$(ls -d "$EXTRACT_DIR"/keensniff-go-* 2>/dev/null | head -n 1 || true)
     [ -n "$PKG_SRC" ] && [ -d "$PKG_SRC" ] || die "Некорректная структура архива."

@@ -5,7 +5,7 @@
 ## Установка одной командой
 
 ```sh
-(command -v curl >/dev/null 2>&1 || { opkg update && opkg install curl; }) && curl -fsSL https://raw.githubusercontent.com/bjornfree/keensniff-releases/main/install.sh -o /tmp/keensniff-install.sh && sh /tmp/keensniff-install.sh
+(command -v curl >/dev/null 2>&1 || { opkg update && opkg install curl; }) && curl -fsSL https://raw.githubusercontent.com/bjornfree/keensniff-releases/main/install.sh | sh
 ```
 
 Поддерживаются arm64, mipsle, mips и arm.
