@@ -197,6 +197,7 @@ emergency_rollback() {
 verify_and_guard() {
     info "Запуск демона и контроль стабильности роутера (20 сек)..."
     
+    started_at=$(date +%s)
     attempts=0
     max_attempts=10
     
@@ -220,6 +221,9 @@ verify_and_guard() {
             emergency_rollback "Критический дефицит RAM ($((curr_avail / 1024)) МБ свободно), угроза сбоя роутера"
         fi
         
+        elapsed=$(( $(date +%s) - started_at ))
+        info "Проверка $attempts/$max_attempts: прошло ${elapsed} сек, доступно $((curr_avail / 1024)) МБ RAM"
+
         # 4. Проверяем здоровье самого KeenSniff
         if curl -fsS -m 2 http://127.0.0.1:8080/api/healthz >/dev/null 2>&1; then
             info "Демон KeenSniff успешно запущен и прошёл health-чек!"
@@ -227,7 +231,8 @@ verify_and_guard() {
         fi
     done
     
-    emergency_rollback "KeenSniff не ответил на health-чек за 20 секунд"
+    elapsed=$(( $(date +%s) - started_at ))
+    emergency_rollback "KeenSniff не ответил на health-чек за ${elapsed} секунд ($max_attempts проверок)"
 }
 
 # --- Создание скрипта штатного удаления ---
