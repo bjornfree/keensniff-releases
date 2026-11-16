@@ -39,6 +39,16 @@ prepare_staging() {
     trap 'exit 143' TERM
 }
 
+# Runtime reimports this seed on restart; staging cleanup must not remove it.
+prepare_bootstrap_seed() {
+    SEED="$ROOT/state/bootstrap"
+    mkdir -p "$SEED"
+    chmod 700 "$SEED"
+    echo '{}' > "$SEED/settings.json"
+    echo '{}' > "$ROOT/state/routing_policies.json"
+    cp "$ROOT/state/routing_policies.json" "$SEED/routing_policies.json"
+}
+
 # --- Определение архитектуры роутера ---
 detect_arch() {
     if command -v opkg >/dev/null 2>&1; then
@@ -320,10 +330,7 @@ main() {
     # Генерация config.json при чистой установке
     if [ ! -f "$ROOT/config.json" ]; then
         info "Генерация конфигурации под роутер..."
-        SEED="$TMP_STAGE/seed" && mkdir -p "$SEED"
-        echo '{}' > "$SEED/settings.json"
-        echo '{}' > "$ROOT/state/routing_policies.json"
-        cp "$ROOT/state/routing_policies.json" "$SEED/routing_policies.json"
+        prepare_bootstrap_seed
         # Список рекламы указан, но выключен: включается вручную во вкладке «Реклама».
         echo '{"provider_dns_servers": ["77.88.8.8", "9.9.9.9"], "tunnel_dns_servers": ["9.9.9.9", "8.8.8.8"], "subscriptions": [{"url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt", "kind": "blocklist", "enabled": false}]}' > "$ROOT/state/dns/config.json"
 
