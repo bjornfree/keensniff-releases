@@ -20,7 +20,8 @@ DEFAULT_REPO="bjornfree/keensniff-releases"
 REPO="${REPO:-$DEFAULT_REPO}"
 GITHUB_RELEASES_URL="https://github.com/${REPO}/releases/latest/download"
 GITHUB_PAGES_URL="https://bjornfree.github.io/${REPO#*/}/downloads"
-TMP_STAGE="/tmp/keensniff-install-$$"
+# Stage on the Entware drive: /tmp is RAM-backed on Keenetic.
+TMP_STAGE="/opt/tmp/keensniff-install-$$"
 
 info()  { printf "\033[1;32m[+]\033[0m %s\n" "$1" >&2; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$1" >&2; }
@@ -78,13 +79,13 @@ check_resources_pre() {
     if [ "$mem_avail" -lt 15000 ]; then
         die "Критически мало свободной памяти: доступно всего $((mem_avail / 1024)) МБ. Установка отменена для безопасности роутера."
     elif [ "$mem_avail" -lt 30000 ]; then
-        warn "Свободной памяти мало ($((mem_avail / 1024)) МБ), но для Go-демона с лимитом кучи (32 МБ) достаточно."
+        warn "Свободной памяти мало ($((mem_avail / 1024)) МБ), установка продолжится с контролем доступной памяти."
     else
         info "Память: всего $((mem_total / 1024)) МБ, доступно $((mem_avail / 1024)) МБ — ресурсов достаточно."
     fi
 
     disk_free=$(df -k /opt 2>/dev/null | awk 'NR==2{print $4}')
-    [ "${disk_free:-0}" -ge 25000 ] || die "Недостаточно свободного места в /opt ($((disk_free / 1024)) МБ, требуется от 25 МБ)."
+    [ "${disk_free:-0}" -ge 65000 ] || die "Недостаточно свободного места в /opt ($((disk_free / 1024)) МБ, требуется от 65 МБ с учётом распаковки)."
     info "Свободно на диске в /opt: $((disk_free / 1024)) МБ."
 }
 
