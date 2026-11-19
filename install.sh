@@ -18,8 +18,9 @@ ROOT="/opt/keensniff-go"
 INIT="/opt/etc/init.d/S99sniffer-go"
 DEFAULT_REPO="bjornfree/keensniff-releases"
 REPO="${REPO:-$DEFAULT_REPO}"
-GITHUB_RELEASES_URL="https://github.com/${REPO}/releases/latest/download"
-GITHUB_PAGES_URL="https://bjornfree.github.io/${REPO#*/}/downloads"
+RELEASE_URL="https://github.com/${REPO}/releases/latest/download"
+# Mirror: the same archives on a single-commit branch, served by raw.githubusercontent.com.
+MIRROR_URL="https://raw.githubusercontent.com/${REPO}/downloads"
 # Stage on the Entware drive: /tmp is RAM-backed on Keenetic.
 TMP_STAGE="/opt/tmp/keensniff-install-$$"
 
@@ -110,16 +111,50 @@ check_resources_pre() {
     info "Свободно на диске в /opt: $((disk_free / 1024)) МБ."
 }
 
-# --- Скачивание файла с автоматическим доустановлением curl при необходимости ---
-download_file() {
-    url="$1"
-    dest="$2"
-    if command -v curl >/dev/null 2>&1; then
-        curl -fSL --connect-timeout 15 --max-time 120 "$url" -o "$dest" 2>/dev/null && return 0
-    fi
-    if command -v wget >/dev/null 2>&1; then
-        wget -q -O "$dest" "$url" 2>/dev/null && return 0
-    fi
+# --- Скачивание пакета ---
+# Resumable download. A lossy uplink drops long transfers, so continue from the
+# received offset instead of restarting, and give up only on a stalled link
+# (under 1 KB/s for 45 s), not after a fixed total time.
+fetch_resume() {
+    local url="$1" out="$2" n=0
+    rm -f "$out"
+    while [ "$n" -lt 6 ]; do
+        n=$((n + 1))
+        if command -v curl >/dev/null 2>&1; then
+            curl -fSL --connect-timeout 15 --speed-limit 1024 --speed-time 45 -C - "$url" -o "$out" 2>/dev/null && [ -s "$out" ] && return 0
+        elif command -v wget >/dev/null 2>&1; then
+            wget -q -c -T 45 -O "$out" "$url" 2>/dev/null && [ -s "$out" ] && return 0
+        else
+            return 1
+        fi
+        sleep 2
+    done
+    return 1
+}
+
+# Checks the archive against the .sha256 published next to it. Without
+# sha256sum or a reachable checksum file, tar's gzip CRC is the remaining check.
+verify_sha256() {
+    local file="$1" sum_url="$2" want got
+    command -v sha256sum >/dev/null 2>&1 || return 0
+    fetch_resume "$sum_url" "$file.sha256" || return 0
+    want=$(awk '{print $1; exit}' "$file.sha256")
+    got=$(sha256sum "$file" | awk '{print $1}')
+    rm -f "$file.sha256"
+    [ -n "$want" ] && [ "$want" = "$got" ]
+}
+
+# Tries each source in order: GitHub Releases, then the mirror branch.
+fetch_from_sources() {
+    local name="$1" dest="$2" base
+    for base in "$RELEASE_URL" "$MIRROR_URL"; do
+        if fetch_resume "$base/$name" "$dest"; then
+            if verify_sha256 "$dest" "$base/$name.sha256"; then
+                return 0
+            fi
+            rm -f "$dest"
+        fi
+    done
     return 1
 }
 
@@ -130,40 +165,21 @@ fetch_package() {
     mkdir -p "$TMP_STAGE"
 
     info "Скачиваю пакет для архитектуры $arch..."
-    
-    # 1. Пробуем GitHub Releases
-    url="${GITHUB_RELEASES_URL}/${tarball_name}"
-    if download_file "$url" "$dest" && [ -s "$dest" ]; then
-        info "Пакет успешно скачан из GitHub Releases."
+    if fetch_from_sources "$tarball_name" "$dest"; then
+        info "Пакет скачан и проверен."
         echo "$dest"
         return 0
     fi
 
-    # 2. Пробуем GitHub Pages
-    url="${GITHUB_PAGES_URL}/${tarball_name}"
-    if download_file "$url" "$dest" && [ -s "$dest" ]; then
-        info "Пакет успешно скачан из GitHub Pages."
-        echo "$dest"
-        return 0
-    fi
-
-    # 3. Если скачивание не удалось (например, busybox wget не поддерживает HTTPS)
-    warn "Прямое скачивание не удалось (возможно, wget без поддержки HTTPS)."
-    if command -v opkg >/dev/null 2>&1; then
-        info "Устанавливаю пакет curl через opkg..."
+    # busybox wget may lack HTTPS: install curl and try once more.
+    if ! command -v curl >/dev/null 2>&1 && command -v opkg >/dev/null 2>&1; then
+        warn "Скачивание не удалось, устанавливаю curl через opkg..."
         opkg update >/dev/null 2>&1 || true
         opkg install curl >/dev/null 2>&1 || true
-        if command -v curl >/dev/null 2>&1; then
-            if curl -fSL --connect-timeout 15 --max-time 120 "${GITHUB_RELEASES_URL}/${tarball_name}" -o "$dest" 2>/dev/null && [ -s "$dest" ]; then
-                info "Пакет успешно скачан с помощью curl."
-                echo "$dest"
-                return 0
-            fi
-            if curl -fSL --connect-timeout 15 --max-time 120 "${GITHUB_PAGES_URL}/${tarball_name}" -o "$dest" 2>/dev/null && [ -s "$dest" ]; then
-                info "Пакет успешно скачан с помощью curl."
-                echo "$dest"
-                return 0
-            fi
+        if command -v curl >/dev/null 2>&1 && fetch_from_sources "$tarball_name" "$dest"; then
+            info "Пакет скачан и проверен."
+            echo "$dest"
+            return 0
         fi
     fi
 
